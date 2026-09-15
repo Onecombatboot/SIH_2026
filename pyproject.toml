@@ -1,0 +1,29 @@
+[project]
+name = "HEIMDALL"
+version = "0.1.0"
+description = "Spatial perception from a single camera — VisionCane (assistive navigation) and NeuroMap (neuro-rehabilitation)"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "fastapi>=0.110.0",
+    "uvicorn[standard]>=0.29.0",
+    "websockets>=12.0",
+    "transformers>=4.57.6",
+    "torch>=2.7.0",
+    "torchvision>=0.22.0",
+    "opencv-python>=4.8.0",
+    "numpy>=1.24.0",
+    "ultralytics>=8.0.0",
+    "accelerate>=0.20.0",
+    "timm>=0.9.0",
+    "mediapipe>=0.10.33",
+]
+
+[[tool.uv.index]]
+name = "pytorch-cu128"
+url = "https://download.pytorch.org/whl/cu128"
+explicit = true
+
+[tool.uv.sources]
+torch = [{ index = "pytorch-cu128" }]
+torchvision = [{ index = "pytorch-cu128" }]
