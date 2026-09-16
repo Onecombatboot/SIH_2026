@@ -36,13 +36,14 @@ VisionCane continuously finds the **single most urgent obstacle** in front of th
 
 How the pipeline decides what matters:
 
-1. **Dense depth estimation.** Every frame becomes a per-pixel depth map, normalised into a *proximity map* using robust percentile clipping so it adapts to any scene.
-2. **Obstacle detection and fusion.** Detected objects are scored by how close they are (median proximity inside the box), their size, detection confidence, and position in frame.
-3. **Clinically sensible priors.** A *bottom-of-frame bias* boosts low obstacles near the user's feet (steps, tables, kerbs). A *border penalty* suppresses the false positives at frame edges that are common in monocular depth.
-4. **Proximity gate.** Nothing beeps unless something is genuinely close, which avoids alarm fatigue.
-5. **Target locking.** Once an obstacle is selected, VisionCane stays locked on it across frames (IoU tracking with a short grace period), so the audio doesn't jump between objects.
-6. **Depth-only fallback.** If no known object class is detected, VisionCane segments the nearest *depth blob* directly. Walls, poles and unrecognised clutter still trigger a warning.
-7. **Angular mapping.** The obstacle's pixel position is converted into a true bearing angle using the camera's field of view, which drives the stereo pan.
+1. **Metric depth estimation.** Every frame becomes a per-pixel map of real distances in metres, so alarm thresholds are actual distances rather than guesses relative to whatever happens to be in shot. The cane stays silent until something comes within **2.5 m**, and reaches maximum urgency at **0.6 m**.
+2. **Ground-plane suppression.** The floor is always among the nearest surfaces in view, so it would otherwise trigger an alarm every single frame. HEIMDALL measures the floor from each frame — its distance recedes steadily up the image — and discounts it. Anything *standing* on the floor is nearer than the floor at that height in the image, so obstacles survive untouched. The suppression disables itself when the scene stops looking like a receding floor (a wall ahead, or an obstacle looming across the lower frame), so it can never silence a real hazard.
+3. **Obstacle detection and fusion.** Detected objects are scored by how close they are (median distance inside the box), their size, detection confidence, and position in frame.
+4. **Clinically sensible priors.** A *bottom-of-frame bias* boosts low obstacles near the user's feet (steps, tables, kerbs). A *border penalty* suppresses the false positives at frame edges that are common in monocular depth.
+5. **Target locking with hysteresis.** Once an obstacle is selected, VisionCane stays locked on it across frames (IoU tracking with a short grace period). Acquiring a target is deliberately harder than keeping one, so an obstacle hovering at the alarm distance cannot flicker in and out of warning.
+6. **Steady response.** Urgency rises quickly toward danger and falls back slowly, and a brief detection gap fades the cue instead of cutting to silence — so a single bad frame can never report a looming obstacle as distant.
+7. **Depth-only fallback.** If no known object class is detected, VisionCane segments the nearest *depth blob* directly. Walls, poles and unrecognised clutter still trigger a warning.
+8. **Angular mapping.** The obstacle's pixel position is converted into a true bearing angle using the camera's field of view, which drives the stereo pan.
 
 ### NeuroMap: spatial-attention rehabilitation
 
@@ -190,11 +191,13 @@ Every tuneable parameter lives in a single config file per app.
 | Setting | Default | Purpose |
 |---|---|---|
 | `DEFAULT_CAM_INDEX` | `0` | Camera device index |
-| `FOV_DEG` | `175.0` | Camera horizontal field of view (drives pan accuracy) |
+| `FOV_DEG` | `68.0` | **Set this to your camera's horizontal field of view.** It maps pixels to bearings, so too wide a value collapses panning to hard left/right |
+| `ALARM_DISTANCE_M` | `2.5` m | Start warning once an obstacle is nearer than this |
+| `CRITICAL_DISTANCE_M` | `0.6` m | Distance at which urgency is maximum |
 | `PROC_SHORT_SIDE` | `512` | Inference resolution; lower is faster |
-| `CLOSE_COLOR_THRES` | `0.90` | Proximity level treated as "close" |
 | `MIN_INTERVAL` / `MAX_INTERVAL` | `0.07` / `0.30` s | Beep-rate range |
-| `BOTTOM_MAX_MULT` | `2.2` | Priority boost for low obstacles |
+| `GROUND_TOLERANCE` | `0.30` | How much of the fitted floor counts as ground; raise if the floor triggers alarms |
+| `METRIC_DEPTH` | `True` | Absolute distances. Set `False` for the scene-relative pipeline, which ranks what is nearest but knows no real distances |
 
 **`apps/neuromap/config.py`**
 
